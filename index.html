@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Unbounded:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=27" />
+  <link rel="stylesheet" href="activity-panel.css?v=6" />
+</head>
+<body>
+  <div id="map" aria-label="Інтерактивна тактична карта світу"></div>
+
+  <aside class="activity-panel" id="activityPanel" aria-label="Активні цілі">
+    <header class="activity-header">
+      <div>
+        <span class="activity-eyebrow">ОНЛАЙН МОНІТОРИНГ</span>
+        <h1>Активні цілі</h1>
+      </div>
+      <span class="activity-alert" id="activityAlert"><i></i> ПІДКЛЮЧЕННЯ</span>
+      <button class="activity-close" id="activityClose" type="button" aria-label="Згорнути панель">×</button>
+    </header>
+    <div class="activity-updated"><span>ОНОВЛЕНО</span><strong id="activityUpdated">очікування API</strong></div>
+    <section class="city-watch" aria-label="Моніторинг обраного міста">
+      <div class="city-watch__summary">
+        <div><span>МІЙ НАПРЯМОК</span><strong id="cityWatchName">Місто не обрано</strong></div>
+        <button id="cityWatchOpen" type="button">СЛІДКУВАТИ ЗА МІСТОМ</button>
+      </div>
+      <div class="city-watch__scan" id="cityWatchScan"><i></i><span>Оберіть місто для моніторингу в радіусі 40 км</span></div>
+      <small class="city-watch__note">Радіус від точки міста; дані надходять з API й не замінюють офіційні сповіщення.</small>
+      <div class="city-watch__setup" id="cityWatchSetup" hidden>
+        <label for="cityWatchInput">Введіть назву міста</label>
+        <div class="city-watch__search"><input id="cityWatchInput" type="search" placeholder="Наприклад, Київ" autocomplete="off"><button id="cityWatchSearch" type="button">ЗНАЙТИ</button></div>
+        <div class="city-watch__results" id="cityWatchResults" role="listbox" aria-label="Знайдені міста"></div>
+        <div class="city-watch__selected" id="cityWatchSelected" hidden></div>
+        <div class="city-watch__actions"><button id="cityWatchSave" type="button" disabled>ЗБЕРЕГТИ МІСТО</button><button id="cityWatchClear" type="button" hidden>ВИДАЛИТИ</button></div>
+      </div>
+    </section>
+    <div class="activity-stats" aria-label="Кількість цілей за типом">
+      <article class="activity-card activity-card--uav">
+        <div class="activity-card__top"><span>БпЛА</span><b aria-hidden="true">⌁</b></div>
+        <strong id="countUav">—</strong>
+        <small id="uavSplit">реакт. — · звич. —</small>
+      </article>
+      <article class="activity-card activity-card--ballistic">
+        <div class="activity-card__top"><span>БАЛІСТИКА</span><b aria-hidden="true">↗</b></div>
+        <strong id="countBallistic">—</strong>
+        <small>активні цілі</small>
+      </article>
+      <article class="activity-card activity-card--kab">
+        <div class="activity-card__top"><span>КАБ</span><b aria-hidden="true">◇</b></div>
+        <strong id="countKab">—</strong>
+        <small>активні цілі</small>
+      </article>
+      <article class="activity-card activity-card--fpv">
+        <div class="activity-card__top"><span>FPV</span><b aria-hidden="true">✣</b></div>
+        <strong id="countFpv">—</strong>
+        <small>активні цілі</small>
+      </article>
+    </div>
+    <section class="activity-launches" aria-label="Повідомлення про пуски БпЛА">
+      <div class="activity-launches__head">
+        <div><span>TELEGRAM / LIVE</span><h2>Пуски БпЛА</h2></div>
+        <button id="telegramPostsOpen" class="telegram-posts-open" type="button">УСІ ДОПИСИ ↗</button>
+      </div>
+      <div class="activity-launches__list" id="activityLaunches"><div class="activity-empty">Завантаження повідомлень каналу…</div></div>
+      <p class="activity-launches__note">Пульс — орієнтовний регіон із допису, стрілка — загальний напрямок до України. Якщо місце не впізнано, точку не ставимо.</p>
+    </section>
+    <div class="activity-list-heading"><h2>Останні цілі</h2><span id="activityTotal">—</span></div>
+    <div class="activity-list" id="activityList" aria-live="polite"><div class="activity-empty">Очікування даних API…</div></div>
+    <footer class="activity-footer"><span><i></i> ДЖЕРЕЛА: API · TELEGRAM</span><strong id="activityConnection">ПІДКЛЮЧЕННЯ</strong></footer>
+  </aside>
+  <button class="activity-tab" id="activityTab" type="button">АКТИВНІ ЦІЛІ</button>
+  <aside class="city-threat-alert" id="cityThreatAlert" role="alert" aria-live="assertive" hidden>
+    <div class="city-threat-alert__signal"><i></i></div>
+    <div class="city-threat-alert__copy"><strong>Увага: ціль у зоні вашого міста</strong><span id="cityThreatAlertText"></span></div>
+    <button id="cityThreatShow" type="button">ПОКАЗАТИ НА МАПІ</button>
+  </aside>
+
+  <dialog class="telegram-modal" id="telegramModal" aria-labelledby="telegramModalTitle">
+    <div class="telegram-modal__frame">
+      <header class="telegram-modal__header">
+        <div><span>ПУБЛІЧНА СТРІЧКА TELEGRAM</span><h2 id="telegramModalTitle">Дописи @zaliznenebo</h2></div>
+        <div class="telegram-modal__actions">
+          <button id="telegramPostsRefresh" class="telegram-modal__refresh" type="button">ОНОВИТИ</button>
+          <button id="telegramPostsClose" class="telegram-modal__close" type="button" aria-label="Закрити вікно">×</button>
+        </div>
+      </header>
+      <div class="telegram-modal__meta"><span id="telegramPostsStatus" role="status">Завантаження…</span><a href="https://t.me/zaliznenebo" target="_blank" rel="noopener noreferrer">ВІДКРИТИ КАНАЛ ↗</a></div>
+      <div class="telegram-feed" id="telegramPostsFeed" aria-live="polite"><div class="activity-empty">Завантаження дописів…</div></div>
+      <p class="telegram-modal__note">Показано дописи, доступні у відкритій стрічці каналу.</p>
+    </div>
+  </dialog>
+
+  <div class="radar-grid"></div>
+  <div class="radar-sweep"></div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div class="timer-panel" aria-label="Актуальное время Украины">
+    <span class="timer-label">ЧАС УКРАЇНИ</span>
+    <strong id="countdown">00:00:00</strong>
+    <span class="timer-state" id="timerState">--.--.----</span>
+    <span class="iron-dome-title">ЗАЛІЗНЕ НЕБО</span>
+  </div>
+
+  <header class="hud-top">
+    <div class="system-name">
+      <span class="system-dot"></span>
+    </div>
+    <div class="live-status"><span></span> LIVE</div>
+    <div id="threatCount" class="threat-count">ЦІЛІ: 0</div>
+  </header>
+
+  <div class="reticle" aria-hidden="true">
+    <span class="reticle-h"></span>
+    <span class="reticle-v"></span>
+    <span class="reticle-ring ring-a"></span>
+    <span class="reticle-ring ring-b"></span>
+    <span class="reticle-ring ring-c"></span>
+  </div>
+
+  <div class="controls-panel">
+    <button id="homeBtn" class="radar-btn">⌖ ЦЕНТР: УКРАЇНА</button>
+    <button id="styleBtn" class="radar-btn compact" title="Сменить режим радара">MODE</button>
+  </div>
+
+  <div class="coordinates" id="coords">31.2056 E / 48.3794 N</div>
+
+
+
+
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div>
+  <div class="corner corner-br"></div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://neptun.in.ua/sdk/neptun.js"></script>
+  <script src="app.js?v=34"></script>
+  <script src="activity-panel.js?v=6"></script>
+
+<div id="radarOverlay"><div class="rings"></div><div class="sweep"></div><div class="cross"></div></div>
+<style>
+#radarOverlay{
+  pointer-events:none;
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:896px;
+  height:896px;
+  border-radius:50%;
+  z-index:9999;
+  opacity:.56;
+  overflow:hidden;
+  border:1px solid rgba(148,181,96,.48);
+  background:
+    radial-gradient(circle at center, rgba(70,96,45,.10) 0%, rgba(39,57,29,.08) 52%, rgba(17,29,15,.20) 100%),
+    repeating-radial-gradient(circle at center, transparent 0 7px, rgba(150,176,102,.025) 8px 9px);
+  box-shadow:
+    0 0 18px rgba(96,126,63,.24),
+    inset 0 0 24px rgba(117,150,76,.12);
+}
+#radarOverlay::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  opacity:.20;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(203,221,157,.26) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(96,122,72,.10) 0 1px, transparent 1px 7px);
+  mix-blend-mode:screen;
+}
+#radarOverlay .rings{
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  background:
+    radial-gradient(circle, transparent 19%, rgba(156,184,103,.66) 20%, transparent 20.7%,
+    transparent 39%, rgba(145,172,92,.56) 40%, transparent 40.7%,
+    transparent 59%, rgba(134,161,83,.48) 60%, transparent 60.7%,
+    transparent 79%, rgba(122,149,76,.40) 80%, transparent 80.7%);
+  filter:drop-shadow(0 0 3px rgba(139,171,91,.42));
+}
+#radarOverlay .cross:before,#radarOverlay .cross:after{
+  content:'';
+  position:absolute;
+  background:rgba(151,179,98,.48);
+  box-shadow:0 0 4px rgba(126,158,80,.26);
+}
+#radarOverlay .cross:before{left:50%;top:0;width:1px;height:100%;transform:translateX(-50%)}
+#radarOverlay .cross:after{top:50%;left:0;height:1px;width:100%;transform:translateY(-50%)}
+#radarOverlay .sweep{
+  position:absolute;
+  inset:-2px;
+  border-radius:50%;
+  background:conic-gradient(
+    from 0deg,
+    rgba(117,151,75,0) 0deg,
+    rgba(117,151,75,.04) 282deg,
+    rgba(137,171,87,.13) 318deg,
+    rgba(164,194,104,.34) 346deg,
+    rgba(191,215,128,.68) 358deg,
+    rgba(117,151,75,0) 360deg
+  );
+  animation:radarspin 6.8s linear infinite;
+  filter:blur(.54px) drop-shadow(0 0 7px rgba(148,182,94,.38));
+  mix-blend-mode:screen;
+}
+@keyframes radarspin{to{transform:rotate(360deg)}}
+</style>
+</body>
+</html>
