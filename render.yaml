@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: map-activity-panel
+    runtime: python
+    buildCommand: ""
+    startCommand: python server.py
+    plan: free

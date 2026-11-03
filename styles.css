@@ -1,0 +1,595 @@
+:root {
+  --radar: #7dff88;
+  --radar-strong: #d5ff8a;
+  --radar-soft: rgba(125,255,136,.18);
+  --radar-line: rgba(125,255,136,.27);
+  --bg: #07150f;
+  --panel: rgba(5, 24, 14, .72);
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--radar);
+  font-family: "Share Tech Mono", monospace;
+}
+
+#map { position: fixed; inset: 0; background: #13251b; }
+.maplibregl-canvas {
+  filter: grayscale(1) sepia(.10) hue-rotate(72deg) saturate(.75) contrast(1.08) brightness(.95);
+}
+.maplibregl-ctrl-bottom-right,
+.maplibregl-ctrl-bottom-left { display: none; }
+
+.radar-grid,
+.scanlines,
+.vignette,
+.radar-sweep {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.radar-grid {
+  opacity: .55;
+  background-image:
+    linear-gradient(var(--radar-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--radar-line) 1px, transparent 1px),
+    linear-gradient(rgba(125,255,136,.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125,255,136,.10) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+  mix-blend-mode: screen;
+}
+
+.scanlines {
+  opacity: .18;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(180,255,183,.12) 0,
+    rgba(180,255,183,.12) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+.vignette {
+  background:
+    radial-gradient(circle at center, transparent 25%, rgba(0, 16, 8, .13) 56%, rgba(0, 10, 5, .62) 100%),
+    linear-gradient(180deg, rgba(6,28,16,.13), rgba(0,8,4,.24));
+}
+
+.radar-sweep {
+  left: 50%; 
+  width: min(120vw, 120vh);
+  height: min(120vw, 120vh);
+  inset: auto;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 326deg,
+    rgba(125,255,136,.02) 332deg,
+    rgba(125,255,136,.30) 354deg,
+    rgba(211,255,138,.72) 359deg,
+    transparent 360deg
+  );
+  filter: blur(.2px);
+  mix-blend-mode: screen;
+  animation: sweep 7s linear infinite;
+  transform-origin: center;
+}
+@keyframes sweep {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.hud-top {
+  position: fixed;
+  z-index: 5;
+  
+  left: 28px;
+  left:54%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  font-size: 13px;
+  letter-spacing: .16em;
+  text-shadow: 0 0 12px rgba(125,255,136,.8);
+}
+.system-name, .live-status { display: flex; align-items: center; gap: 10px; }
+.system-dot, .live-status span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--radar);
+  box-shadow: 0 0 14px var(--radar);
+}
+.live-status span { animation: blink 1.4s infinite; }
+@keyframes blink { 50% { opacity: .3; } }
+
+.timer-panel {
+  position: fixed;
+  z-index: 6;
+  
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 210px;
+  padding: 10px 20px 8px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(5,29,16,.86), rgba(3,17,10,.68));
+  border: 1px solid rgba(125,255,136,.46);
+  box-shadow: 0 0 24px rgba(125,255,136,.13), inset 0 0 18px rgba(125,255,136,.06);
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%, 0 10px);
+}
+.timer-label, .timer-state { display: block; font-size: 9px; letter-spacing: .22em; opacity: .72; }
+.timer-panel strong {
+  display: block;
+  color: var(--radar-strong);
+  font-size: 25px;
+  line-height: 1;
+  margin: 4px 0;
+  letter-spacing: .1em;
+  text-shadow: 0 0 15px rgba(213,255,138,.8);
+}
+
+.reticle {
+  position: fixed;
+  z-index: 3;
+  left: 50%; 
+  width: min(70vw, 70vh);
+  height: min(70vw, 70vh);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: .56;
+}
+.reticle-ring {
+  position: absolute;
+  left: 50%; 
+  transform: translate(-50%,-50%);
+  border: 1px solid rgba(125,255,136,.34);
+  border-radius: 50%;
+}
+.ring-a { width: 100%; height: 100%; }
+.ring-b { width: 66%; height: 66%; }
+.ring-c { width: 33%; height: 33%; }
+.reticle-h, .reticle-v { position: absolute; background: rgba(125,255,136,.28); }
+.reticle-h { left: 0; right: 0;  height: 1px; }
+.reticle-v {  bottom: 0; left: 50%; width: 1px; }
+
+.controls-panel {
+  position: fixed;
+  z-index: 6;
+  left: 28px;
+  
+  display: flex;
+  gap: 10px;
+}
+.radar-btn {
+  height: 44px;
+  border: 1px solid rgba(125,255,136,.55);
+  background: rgba(4,27,14,.78);
+  color: var(--radar-strong);
+  padding: 0 18px;
+  font: 13px "Share Tech Mono", monospace;
+  letter-spacing: .08em;
+  cursor: pointer;
+  box-shadow: inset 0 0 16px rgba(125,255,136,.06), 0 0 18px rgba(125,255,136,.06);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.radar-btn:hover { background: rgba(68,129,76,.32); box-shadow: 0 0 20px rgba(125,255,136,.22); }
+.radar-btn.compact { padding: 0 13px; }
+
+.coordinates {
+  position: fixed;
+  z-index: 5;
+  left:58%;
+  
+  color: var(--radar-strong);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-shadow: 0 0 12px var(--radar);
+  background: rgba(2,20,10,.58);
+  border-left: 2px solid var(--radar);
+  padding: 8px 12px;
+  bottom: 20px;
+}
+
+.pulse-label {
+  position: fixed;
+  z-index: 5;
+  transform: translate(-50%,-50%);
+  color: var(--radar-strong);
+  font-size: 12px;
+  letter-spacing: .14em;
+  pointer-events: none;
+  text-shadow: 0 0 12px #000, 0 0 14px var(--radar);
+}
+.pulse-label span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--radar-strong);
+  margin-right: 8px;
+  box-shadow: 0 0 0 0 rgba(213,255,138,.45), 0 0 18px var(--radar-strong);
+  animation: targetPulse 1.6s infinite;
+}
+@keyframes targetPulse {
+  50% { box-shadow: 0 0 0 13px rgba(213,255,138,0), 0 0 28px var(--radar-strong); }
+}
+
+.corner { position: fixed; z-index: 5; width: 45px; height: 45px; pointer-events: none; opacity: .78; }
+.corner::before, .corner::after { content:""; position:absolute; background:var(--radar); box-shadow: 0 0 10px rgba(125,255,136,.6); }
+.corner::before { width: 32px; height: 1px; }
+.corner::after { width: 1px; height: 32px; }
+.corner-tl {  left: 12px; }
+.corner-tr {  right: 12px; transform: rotate(90deg); }
+.corner-bl { bottom: 12px; left: 12px; transform: rotate(-90deg); }
+.corner-br { bottom: 12px; right: 12px; transform: rotate(180deg); }
+
+body.alt {
+  --radar: #68d8ff;
+  --radar-strong: #d1f5ff;
+  --radar-soft: rgba(104,216,255,.18);
+  --radar-line: rgba(104,216,255,.24);
+  --bg: #06131a;
+}
+body.alt .maplibregl-canvas {
+  filter: grayscale(1) sepia(.08) hue-rotate(145deg) saturate(.75) contrast(1.08) brightness(.96);
+}
+
+@media (max-width: 720px) {
+  .hud-top {  left: 16px; right: 16px; font-size: 10px; }
+  .system-name { max-width: 60%; }
+  .timer-panel {  min-width: 176px; }
+  .timer-panel strong { font-size: 21px; }
+  .reticle { width: 88vw; height: 88vw; }
+  .controls-panel { left: 14px; bottom: 14px; }
+  .radar-btn { height: 40px; font-size: 11px; padding: 0 13px; }
+  .coordinates { display: none; }
+}
+
+.iron-dome-title {
+  display: block;
+  margin-
+  padding-
+  border-
+  color: var(--radar-strong);
+  font-family: "Unbounded", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .2em;
+  white-space: nowrap;
+  text-shadow: 0 0 8px rgba(213,255,138,.95), 0 0 22px rgba(125,255,136,.6);
+}
+
+.timer-panel { min-width: 250px; }
+.timer-panel strong { font-size: 28px; letter-spacing: .08em; }
+
+@media (max-width: 720px) {
+  .timer-panel { min-width: 220px; }
+  .iron-dome-title { font-size: 9px; letter-spacing: .16em; }
+}
+
+/* Strong administrative visibility over satellite terrain */
+.iron-dome-title {
+  display: block;
+  margin-
+  padding-
+  border-
+  color: var(--radar-strong);
+  font-family: "Unbounded", sans-serif;
+  font-size: 12px;
+  letter-spacing: .16em;
+  text-shadow: 0 0 10px rgba(125,255,136,.95), 0 0 22px rgba(125,255,136,.45);
+}
+#map::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(rgba(3,34,16,.05), rgba(3,34,16,.12));
+  mix-blend-mode: color;
+}
+.maplibregl-canvas { filter: saturate(1.08) contrast(1.12) brightness(1.08); }
+body.alt .maplibregl-canvas { filter: saturate(.95) contrast(1.16) brightness(1.08) hue-rotate(12deg); }
+
+
+.data-attribution {
+  position: fixed;
+  z-index: 6;
+  right: 22px;
+  bottom: 18px;
+  padding: 6px 9px;
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: rgba(213,255,138,.78);
+  background: rgba(2,20,10,.62);
+  border: 1px solid rgba(125,255,136,.22);
+  text-shadow: 0 0 8px rgba(125,255,136,.55);
+}
+.data-attribution a {
+  color: var(--radar-strong);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(213,255,138,.45);
+}
+.data-attribution a:hover { border-bottom-color: var(--radar-strong); }
+
+@media (max-width: 720px) {
+  .data-attribution { right: 10px; bottom: 10px; font-size: 9px; }
+}
+
+
+.threat-count {
+  position: fixed;
+  top: 58px;
+  right: 18px;
+  z-index: 10020;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 75, 75, .55);
+  background: rgba(20, 0, 0, .72);
+  color: #ff7777;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  letter-spacing: .08em;
+  box-shadow: 0 0 14px rgba(255, 0, 0, .18);
+  backdrop-filter: blur(5px);
+}
+.maplibregl-popup-content {
+  background: rgba(10, 16, 8, .96);
+  color: #efffd3;
+  border: 1px solid rgba(255, 84, 84, .58);
+  box-shadow: 0 0 18px rgba(0, 0, 0, .55);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  line-height: 1.38;
+}
+.maplibregl-popup-tip { border-top-color: rgba(10, 16, 8, .96) !important; }
+.maplibregl-popup-close-button { color: #ff7777; font-size: 18px; }
+.threat-popup strong { color: #ff7878; font-size: 14px; }
+.threat-popup hr { border: 0; border-top: 1px solid rgba(255,255,255,.16); margin: 7px 0; }
+
+
+/* v19: маркери географічно зафіксовані під час масштабування */
+.live-threat-marker {
+  --threat-color: #ff4d4d;
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.95));
+  z-index: 50;
+}
+.live-threat-marker.is-selected { z-index: 1000 !important; }
+.live-threat-marker.is-selected .live-threat-pulse { border-width: 3px; box-shadow: 0 0 18px var(--threat-color), inset 0 0 10px color-mix(in srgb, var(--threat-color) 70%, transparent); animation-duration: .7s; }
+.live-threat-marker.is-selected .live-threat-label { color: #fff; border-width: 2px; box-shadow: 0 0 12px var(--threat-color); }
+.live-threat-pulse {
+  position: absolute;
+  inset: 3px;
+  border: 1px solid var(--threat-color);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--threat-color) 25%, transparent);
+  animation: live-threat-pulse 1.25s ease-out infinite;
+}
+.live-threat-icon {
+  position: relative;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  display: block;
+  transform-origin: center;
+  will-change: transform;
+}
+.live-threat-icon svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.95));
+}
+.live-threat-icon .icon-body {
+  fill: #f7f7f2;
+  stroke: #111;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+.live-threat-icon .icon-detail {
+  fill: none;
+  stroke: var(--threat-color);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.live-threat-icon .icon-window,
+.live-threat-icon .icon-sensor {
+  fill: var(--threat-color);
+  stroke: #111;
+  stroke-width: 1;
+}
+
+.live-threat-icon .target-silhouette {
+  fill: #fff;
+  stroke: rgba(0,0,0,.92);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+.live-threat-icon .target-cutout {
+  fill: rgba(25,25,25,.9);
+}
+.live-threat-icon .target-stroke {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.live-threat-icon .target-ring {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3.5;
+}
+.live-threat-label {
+  position: absolute;
+  top: 29px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 2px 5px;
+  border: 1px solid color-mix(in srgb, var(--threat-color) 75%, transparent);
+  border-radius: 3px;
+  background: rgba(5, 7, 5, .88);
+  color: var(--threat-color);
+  font: 800 10px/1.2 "Share Tech Mono", monospace;
+  letter-spacing: .04em;
+  text-shadow: 0 0 4px #000;
+}
+@keyframes live-threat-pulse {
+  0% { transform: scale(.65); opacity: .95; }
+  100% { transform: scale(1.65); opacity: 0; }
+}
+
+
+/* Telegram news feed */
+.telegram-feed {
+  position: fixed;
+  z-index: 10030;
+  top: 14px;
+  right: 14px;
+  bottom: 52px;
+  width: min(310px, 25vw);
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #efffd3;
+  background: linear-gradient(180deg, rgba(4, 20, 12, .94), rgba(2, 12, 7, .91));
+  border: 1px solid rgba(125, 255, 136, .48);
+  box-shadow: 0 0 28px rgba(0, 0, 0, .55), inset 0 0 26px rgba(125, 255, 136, .045);
+  backdrop-filter: blur(9px);
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  transition: transform .28s ease, opacity .28s ease;
+}
+.telegram-feed.is-hidden { transform: translateX(calc(100% + 28px)); opacity: 0; pointer-events: none; }
+.telegram-feed__header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 15px 14px 12px;
+  border-bottom: 1px solid rgba(125, 255, 136, .25);
+  background: rgba(31, 94, 55, .16);
+}
+.telegram-feed__eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(213, 255, 138, .58);
+  font-size: 9px;
+  letter-spacing: .2em;
+}
+.telegram-feed__header a {
+  color: var(--radar-strong);
+  font-family: "Unbounded", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-decoration: none;
+  text-shadow: 0 0 12px rgba(125,255,136,.52);
+}
+.telegram-feed__toggle {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(125,255,136,.35);
+  background: rgba(2,20,10,.7);
+  color: var(--radar-strong);
+  font: 20px/1 "Share Tech Mono", monospace;
+  cursor: pointer;
+}
+.telegram-feed__status {
+  flex: 0 0 auto;
+  padding: 8px 13px;
+  color: rgba(213, 255, 138, .63);
+  border-bottom: 1px solid rgba(125,255,136,.13);
+  font-size: 9px;
+  letter-spacing: .13em;
+}
+.telegram-feed__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125,255,136,.45) rgba(0,0,0,.2);
+}
+.telegram-news-item {
+  display: block;
+  padding: 12px 13px 11px;
+  color: #efffd3;
+  border-bottom: 1px solid rgba(125,255,136,.13);
+  text-decoration: none;
+  transition: background .15s ease, border-color .15s ease;
+}
+.telegram-news-item:hover { background: rgba(125,255,136,.075); border-color: rgba(125,255,136,.3); }
+.telegram-news-item__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: rgba(213,255,138,.57);
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+.telegram-news-item__text {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.42;
+  white-space: pre-line;
+}
+.telegram-feed__open {
+  flex: 0 0 auto;
+  display: block;
+  padding: 11px 13px;
+  color: var(--radar-strong);
+  border-top: 1px solid rgba(125,255,136,.28);
+  background: rgba(31,94,55,.15);
+  font-size: 10px;
+  letter-spacing: .13em;
+  text-align: center;
+  text-decoration: none;
+}
+.telegram-feed-tab {
+  position: fixed;
+  z-index: 10031;
+  top: 50%;
+  right: 0;
+  display: none;
+  padding: 13px 7px;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  border: 1px solid rgba(125,255,136,.5);
+  border-right: 0;
+  background: rgba(3,22,12,.91);
+  color: var(--radar-strong);
+  font: 10px "Share Tech Mono", monospace;
+  letter-spacing: .15em;
+  cursor: pointer;
+}
+.telegram-feed-tab.is-visible { display: block; }
+body.alt .telegram-feed,
+body.alt .telegram-feed-tab { border-color: rgba(104,216,255,.48); }
+@media (max-width: 900px) {
+  .telegram-feed {
+    top: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: min(82vw, 310px);
+    min-width: 0;
+  }
+  .telegram-news-item__text { font-size: 12px; }
+  .data-attribution { display: none; }
+}
